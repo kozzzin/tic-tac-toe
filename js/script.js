@@ -25,7 +25,7 @@ function newPlayer(name, marker) {
         turn() {
 
         },
-        active: true
+        active: false
     }
 }
 
@@ -50,7 +50,8 @@ const gameLogic = {
 
         function checker(lines) {
             lines.forEach(e => {
-                if (e.every(el => el == 1 || el == 2)) {
+                if (e.every(el => el == 1) || e.every(el => el == 2)) {
+                    console.log('WINWINWIN');
                     console.log(e[0]);
                     gameFlow.gameActive = false;
                 }
@@ -103,6 +104,15 @@ const gameFlow = {
 
     players: [],
 
+    score: [],
+
+    turn(val=0) {
+        this.lastTurn = val == 0 ? 1 : 0;
+        return this.lastTurn;
+    },
+
+    lastTurn: 1,
+
 
     turns: 0,
 
@@ -120,7 +130,8 @@ const eventHandlers = {
         if (gameFlow.gameActive) {
             console.log(e.target);
             // marker to put
-            const marker = 2;
+            let turn = gameFlow.turn(gameFlow.lastTurn);
+            const marker = gameFlow.players[turn].marker;
             e.target.innerHTML = gameboard.markers[marker];
             const row = e.target.getAttribute(['data-row']);
             const column = e.target.getAttribute(['data-column']);
@@ -167,9 +178,46 @@ const interface = {
     }
 }
 
+// DELETE EVENT LISTENERS !!!
+
 document.addEventListener('DOMContentLoaded', function(e) {
     console.log(document.querySelector('.gameboard-container'));
     interface.buildBoard();
+
+    document.querySelectorAll('.marker').forEach((e) => {
+        e.addEventListener('click', function(e) {
+            const target = e.target;
+            const player = target.getAttribute('data-player');
+            const marker = target.getAttribute('data-marker');
+            console.log(player, marker);
+            console.log(e.target);
+            target.classList.toggle('selected');
+            let anotherPlayer = player == 0 ? 1 : 0;
+
+            document.querySelectorAll(`[data-player="${player}"]`)
+                .forEach((e) => {
+                    if (!e.classList.contains('selected')) {
+                        e.classList.add('disabled');
+                    }
+                });
+            document.querySelectorAll(`[data-player="${anotherPlayer}"]`)
+                .forEach((e) => {
+                    if (e.getAttribute('data-marker') == marker) {
+                        e.classList.add('disabled');
+                    }
+                });
+
+            gameFlow.players.push(newPlayer(player,marker));
+
+        });
+    });
+
+    document.querySelector('.start').addEventListener('click',function() {
+        document.querySelector('.new-game').classList.toggle('hide');
+        document.querySelector('.gameboard-container').classList.toggle('hide');
+
+        
+    });
 });
 
 
