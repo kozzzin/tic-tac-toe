@@ -48,7 +48,8 @@ main {
     font-size: 5rem;;
 }
 
-.marker {
+.marker,
+.marker-game {
     display: block;
 }
 
