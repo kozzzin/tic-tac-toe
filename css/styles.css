@@ -66,8 +66,7 @@ main {
 .new-game {
     display: grid;
     grid-template-columns: 2fr 1fr 2fr;
-    grid-template-rows: 1fr;
-    grid-auto-flow: column;
+    grid-template-rows: 2fr 1fr;
     width: 80%;
     max-width: 1000px;
     justify-items: center;
@@ -85,7 +84,7 @@ main {
 .vs {
     text-align: center;
     display: grid;
-    grid-template-rows: repeat(3,1fr);
+    grid-template-rows: 1fr;
     align-items: center;
     gap: 5px;
     color: #fff;
@@ -100,8 +99,14 @@ main {
     padding: 0 20px;
 }
 
+button.start {
+    grid-column: 1/-1;
+    margin: 30px 0;
+}
+
 .vs button,
-footer button {
+footer button,
+.start {
     appearance: none;
     box-shadow: 0;
     border: 3px solid rgb(255, 195, 65);
@@ -117,17 +122,28 @@ footer button {
 }
 
 .vs button:hover,
-footer button:hover {
+footer button:hover,
+.start:hover {
     filter: brightness(1.2);
 }
 
-h2 {
+button.start {
+    font-size: 1.5rem;
+    text-shadow: 0 0 10px black;
+    box-shadow: 0 0 10px black;
+}
+
+.mode-choice {
     text-align: center;
-    font-size: 2.6rem;
+    font-size: 1.8rem;
     text-transform: uppercase;
     letter-spacing: 0.1rem;
     color: #fff;
     margin: 0;
+}
+
+.mode-choice a {
+    cursor: pointer;
 }
 
 .player-choice {
@@ -225,7 +241,7 @@ a {
 }
 
 a:hover {
-    filter: brightness(2);
+    filter: brightness(1.5);
 }
 
 .result {

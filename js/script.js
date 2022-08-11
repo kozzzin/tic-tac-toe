@@ -1,14 +1,26 @@
-// 2. AI
+// player or ai
+// if AI starts the game, not after refresh
+// 2. AI --
 // refactor the code
 // 3. ?? add animations
 // 4. ?? change name
 // 5. automatic choice for second player
+// 6. animate lines
+
+
+// ideas to refactor code
+/*
+basic logic works without interface,
+you could choose your marker,
+decide who's turn is first,
+how the computer responds and so on
+
+than w have render / visual level, where we render out board from array
+
+and than gameflow object to join 2 layers
+*/
 
 "use strict";
-
-const game = (function() {
-
-})();
 
 
 const gameboard = (function() {
@@ -52,13 +64,7 @@ const gameboard = (function() {
 })();
 
 
-function newPlayer(name, marker) {
-    return {
-        name: name,
-        marker: marker,
-        score:0
-    }
-}
+
 
 const gameLogic = (function() {
     return {
@@ -129,7 +135,18 @@ const gameFlow = (function() {
             events.docReady();
         },
 
+        newPlayer(name, marker, mode) {
+            return {
+                name: name,
+                marker: marker,
+                mode: mode,
+                score:0
+            }
+        },
+
         players: [],
+
+        gameMode: 'player',
 
         addPLayer(player) {
             this.players.push(player);
@@ -167,13 +184,17 @@ const gameFlow = (function() {
             gameFlow.gameActive = true;
             gameInterface.activePlayer();
             gameInterface.showResult();
+
+
+            pseudoAI();
+
         }
         
     }
 })();
 
 const events = {
-    squareClick(e) {
+    squareClick(e, ai) {
         if (gameFlow.gameActive) {
             // read properties of event
             const target = e.target;
@@ -182,13 +203,55 @@ const events = {
             
             // making next turn and rendering result
             gameFlow.nextTurn(row, column);
+
             gameInterface.renderMarker(target,gameFlow.currentMarker);
 
             // disabling square to avoid double click or rewriting marker
             target.removeAttribute('onClick');
 
             // highlight current player
-            gameInterface.activePlayer();        
+            gameInterface.activePlayer(); 
+
+
+            pseudoAI();
+
+            // const anotherPlayer = gameFlow.players[gameFlow.lastTurn].name == 1 ? 1 : 0;
+
+            // const playerMode = gameFlow.players[anotherPlayer].mode;
+
+            // if (playerMode == 'ai' && gameFlow.gameActive) {
+            //     //  ADD PLAYER WHO IS AI, because in second game start as player
+            //     const choices = [];
+            //     gameboard.boardArray.forEach((_,row) => {
+            //         _.forEach((el,column) => {
+            //             if (el == 0) {
+            //                 choices.push({row,column});
+            //             }
+            //         });
+            //     })
+
+            //     const choice = Math.floor(Math.random() * choices.length);
+            //     const row = choices[choice].row;
+            //     const column = choices[choice].column;
+            //     const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
+
+            //     // making next turn and rendering result
+            //     gameFlow.nextTurn(row, column);
+
+            //     gameInterface.renderMarker(target,gameFlow.currentMarker);
+
+            //     // disabling square to avoid double click or rewriting marker
+            //     target.removeAttribute('onClick');
+
+            //     // highlight current player
+            //     gameInterface.activePlayer(); 
+
+
+            //     // in AI mode have problems with score and active user
+            //     // i have to make while loop, waiting for input click or when both are ai, to make the rhytm 
+
+            // }
+
         }
     },
  
@@ -204,7 +267,28 @@ const events = {
         
             whenDocReady.onClick('.start',gameInterface.showGameBoard);
             whenDocReady.onClick('#restart',gameFlow.restartGame);
-            whenDocReady.onClick('#end-game',function(){location.reload()});    
+            whenDocReady.onClick('#end-game',function(){location.reload()});  
+            
+
+            // choose game mode
+            const modesNode = document.querySelectorAll('.game-mode');
+
+            modesNode.forEach((el) => {
+                el.addEventListener('click', function(e) {
+                    const mode = el.getAttribute('data-mode');
+                    const player = e.target.getAttribute('data-player');
+                    modesNode.forEach((el) => {
+                        if (el.getAttribute('data-player') == player) {
+                            el.classList.toggle('selected');
+                        }
+                        
+                    });
+                    gameFlow.gameMode = mode;
+                });
+            });
+
+            // end of choice
+
         });
 
     },
@@ -218,9 +302,13 @@ const events = {
             const target = e.target;
             const player = target.getAttribute('data-player');
             const marker = target.getAttribute('data-marker');
+            
+            // HAVE TO ADD DISABLING OF CHOICE
+            const playerMode = document.querySelector(`.game-mode.selected[data-player="${player}"]`);
+            const gameMode = playerMode.getAttribute('data-mode');
                
             gameInterface.chooseMarker(target,player,marker);
-            gameFlow.addPLayer(newPlayer(player,marker));
+            gameFlow.addPLayer(gameFlow.newPlayer(player,marker,gameMode));
             gameInterface.showStartButton();
         }
 }
@@ -248,19 +336,23 @@ const gameInterface = {
         // clear event listener
         document.querySelector('.start').removeEventListener('click',this.showGameBoard);
     
+
         // small markers near score
         document.querySelectorAll('.score-marker').forEach((el) => {
-            const marker = gameFlow.players[el.getAttribute('data-player')-1].marker;
+            const player = gameFlow.players.find(e => e.name === el.getAttribute('data-player'));
+            const marker = player.marker;
             el.innerHTML = gameboard.markers[marker];
         })
     
         gameInterface.activePlayer();
+
+        pseudoAI('init');
     },
     
 
     activePlayer() {
         document.querySelectorAll('.score-player').forEach((el) => {
-            if (el.getAttribute('data-player') != gameFlow.lastTurn + 1) {
+            if (el.getAttribute('data-player') != gameFlow.players[gameFlow.lastTurn].name) {
                 el.classList.toggle('selected');
 
             } else {
@@ -273,7 +365,6 @@ const gameInterface = {
 
     renderMarker(target,marker) {
         target.innerHTML = gameboard.markers[marker];
-
     },
 
     chooseMarker(target,player,marker) {
@@ -290,11 +381,11 @@ const gameInterface = {
                     if (!e.classList.contains('selected')) {
                         e.classList.add('disabled');
                     }
-                    e.removeEventListener('click',this.chooseMarker);
+                    e.removeEventListener('click',events.initialMarkerChoice);
                 } else if (playerAttribute == anotherPlayer) {
                     if (e.getAttribute('data-marker') == marker) {
                         e.classList.add('disabled');
-                        e.removeEventListener('click',this.chooseMarker);
+                        e.removeEventListener('click',events.initialMarkerChoice);
                     }   
                 }
             });
@@ -323,3 +414,37 @@ const gameInterface = {
 }
 
 gameFlow.newGame();
+
+function pseudoAI(init) {
+    const anotherPlayer = gameFlow.players[gameFlow.lastTurn].name == 1 ? 1 : 0;
+
+    const playerMode = gameFlow.players[anotherPlayer].mode;
+    
+    if (playerMode == 'ai' && gameFlow.gameActive) {
+        const choices = [];
+        gameboard.boardArray.forEach((_,row) => {
+            _.forEach((el,column) => {
+                if (el == 0) {
+                    choices.push({row,column});
+                }
+            });
+        });
+        
+
+        const choice = Math.floor(Math.random() * choices.length);
+        const row = choices[choice].row;
+        const column = choices[choice].column;
+        const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
+
+        // making next turn and rendering result
+        gameFlow.nextTurn(row, column);
+
+        gameInterface.renderMarker(target,gameFlow.currentMarker);
+
+        // disabling square to avoid double click or rewriting marker
+        target.removeAttribute('onClick');
+
+        // highlight current player
+        gameInterface.activePlayer();
+    }
+}

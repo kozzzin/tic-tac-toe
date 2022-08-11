@@ -37,33 +37,38 @@
         <main>
             <div class="new-game">
                 <div class="player-one">
-                    <h2>Player 1</h2>
+                    <div class="mode-choice"><a a href="#" class="game-mode selected" data-player="1" data-mode="player">Player</a></div>
                     <div class="player-choice">
                         <span data-player="1" data-marker="1" class="marker">X</span>
                         <span data-player="1" data-marker="2" class="marker">O</span>
                     </div>
                 </div>
                 <div class="vs">
-                    <p><a href="#" id="two-players">2PLAYERS</a>&nbsp;or&nbsp;<a href="#" id="ai">COMPUTER</a></p>
                     <span>VS.</span>
-                    <button class="start hide">Start game</button>
                 </div>
                 <div class="player-two">
-                    <h2>Player 2</h2>
+                    <div class="mode-choice"><a a href="#" class="game-mode" data-player="2" data-mode="player">Player</a> | <a href="#" class="game-mode selected" data-player="2" data-mode="ai">Ai</a></div>
                     <div class="player-choice">
                         <span data-player="2" data-marker="1" class="marker">X</span>
                         <span data-player="2" data-marker="2" class="marker">O</span>
                     </div>
                 </div>
+                <button class="start hide">Start game</button>
             </div>
             <div class="gameboard-container hide">
             </div>
+
+
+         
+
         </main>
         <footer>
             <button id="restart" class="hide">one more</button>
             <button id="end-game" class="hide">end game</button>
         </footer>
     </section>
+
+
     
 </body>
 </html>
