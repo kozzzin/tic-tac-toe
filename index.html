@@ -11,8 +11,28 @@
 <body>
     <section class="container">
         <header>
-            <div class="score">
+            <div class="score-container hide">
+                <div class="score-marker" data-player="1">
+                    
+                </div>
+                <div class="score-player" data-player="1">
+                    Player 1
+                </div>
+                <div class="score">
+                    0:0
+                </div>
+                <div class="score-player" data-player="2">
+                    Player 2
+                </div>
+                <div class="score-marker" data-player="2">
+                    
+                </div>
+
             </div>
+
+            <span class="result hide">
+                
+            </span> 
         </header>
         <main>
             <div class="new-game">
@@ -24,6 +44,7 @@
                     </div>
                 </div>
                 <div class="vs">
+                    <p><a href="#" id="two-players">2PLAYERS</a>&nbsp;or&nbsp;<a href="#" id="ai">COMPUTER</a></p>
                     <span>VS.</span>
                     <button class="start hide">Start game</button>
                 </div>
@@ -39,7 +60,8 @@
             </div>
         </main>
         <footer>
-
+            <button id="restart" class="hide">one more</button>
+            <button id="end-game" class="hide">end game</button>
         </footer>
     </section>
     

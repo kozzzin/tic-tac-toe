@@ -1,3 +1,11 @@
+// 2. AI
+// refactor the code
+// 3. ?? add animations
+// 4. ?? change name
+// 5. automatic choice for second player
+
+"use strict";
+
 const game = (function() {
 
 })();
@@ -10,21 +18,45 @@ const gameboard = (function() {
             [0,0,0],
             [0,0,0]
         ],
+
+        clearBoard() {
+            this.boardArray.forEach((e) => {
+                e.forEach((_,index) => e[index] = 0);
+            });
+        },
     
         markers: {
             1: 'X',
             2: 'O'
-        } 
+        },
+
+        getBoardContainer() {
+            return document.querySelector('.gameboard-container');
+        },
+    
+        buildBoard() {
+            const boardContainer = this.getBoardContainer();
+            boardContainer.innerHTML = '';
+            gameboard.boardArray.forEach((e,row) => {
+                e.forEach((e,column) => {
+                    let boardSquare = document.createElement('span');
+                    boardSquare.classList.add('marker-game');
+                    boardSquare.setAttribute('data-row',`${row}`);
+                    boardSquare.setAttribute('data-column',`${column}`);
+                    boardSquare.setAttribute('onClick','events.squareClick(event)');
+                    boardContainer.appendChild(boardSquare);
+                })
+            });
+        },
     }
 })();
-
 
 
 function newPlayer(name, marker) {
     return {
         name: name,
         marker: marker,
-        score:[]
+        score:0
     }
 }
 
@@ -46,226 +78,248 @@ const gameLogic = (function() {
                 });
                 return transposedArray;
             }
-    
-            
+          
             function checker(lines) {
                 lines.forEach(line => {
                     if (line.every(el => el == 1) || line.every(el => el == 2)) {
-                        console.log('WINWINWIN');
                         const winner = this.chooseWinner(line[0]);
                         console.log('player ' + (winner) + ' is winner');
                         gameFlow.gameActive = false;
+                        gameInterface.showResult(winner);
+                        const scoreResult = `${gameFlow.players[0].score}:${gameFlow.players[1].score}`;
+                        document.querySelector('.score').innerHTML = scoreResult;
                     }
                 })
             }
     
             // in case of tie, we count players turns
-            if (gameFlow.turns >= 8) {
-                console.log('GAME OVER');
+            if (gameFlow.turns >= 9) {
                 gameFlow.gameActive = false;
+                gameInterface.activePlayer();
+                gameInterface.showResult("it's a tie");
             }
     
             // checking rows & diagonals
             checker.call(this,board.concat([diagonalOne],[diagonalTwo],transposedBoard));  
-    
         },
     
         chooseWinner(marker) {
-            return gameFlow.players.filter((e) => e.marker == marker)[0].name;
+            gameInterface.activePlayer();
+            const winner = gameFlow.players.filter((e) => e.marker == marker)[0];
+            const name = winner.name;
+            winner.score += 1;
+            return name;
         },
     
-
-    
-        saveScore() {
-            // play multiple games and fix score
-            // push 1 to winner array and 0 to losers
-        }   
     }
 })();
 
 
-const gameFlow = {
-    /*
-    -- render interface
-    -- choose play vs player or vs AI
-    -- choose marker
-    -- who goes first
-    -- show new button: continue or new game
-    */
+const gameFlow = (function() {
+    return {
+        /*
+        -- render interface
+        -- choose play vs player or vs AI
+        -- choose marker
+        -- who goes first
+        -- show new button: continue or new game
+        */
 
-    newGame() {
+        newGame() {
+            events.docReady();
+        },
 
-    },
+        players: [],
 
-    players: [],
+        addPLayer(player) {
+            this.players.push(player);
+        },
 
-    addPLayer(player) {
-        this.players.push(player);
-    },
+        turn(val=0) {
+            this.lastTurn = val == 0 ? 1 : 0;
+            return this.lastTurn;
+        },
 
-    turn(val=0) {
-        this.lastTurn = val == 0 ? 1 : 0;
-        return this.lastTurn;
-    },
+        nextTurn(row,column) {
+            let turn = this.turn(this.lastTurn);
+            this.currentMarker = this.players[turn].marker;
+            this.putMarker(this.currentMarker, row, column);
+            this.turns += 1;
+            gameLogic.checkEnd();
+        },
 
-    putMarker(marker, row, column) {
-        gameboard.boardArray[row][column] = marker;
-    },
+        putMarker(marker, row, column) {
+            gameboard.boardArray[row][column] = marker;
+        },
 
-    lastTurn: 1,
+        lastTurn: 1,
 
+        currentMarker: 0,
 
-    turns: 0,
+        turns: 0,
 
+        gameActive: true,
 
-    gameActive: true,
-
-
-}
-
+        restartGame() {
+            gameboard.clearBoard();
+            gameboard.buildBoard();
+            gameFlow.turns = 0;
+            gameFlow.gameActive = true;
+            gameInterface.activePlayer();
+            gameInterface.showResult();
+        }
+        
+    }
+})();
 
 const events = {
     squareClick(e) {
         if (gameFlow.gameActive) {
-
-            // nextTurn();
-            let turn = gameFlow.turn(gameFlow.lastTurn);
-            const marker = gameFlow.players[turn].marker;
-
-            // current turn marker
-
-
+            // read properties of event
             const target = e.target;
             const row = target.getAttribute(['data-row']);
             const column = target.getAttribute(['data-column']);
             
-            gameFlow.putMarker(marker, row, column);
-            render.marker(target,marker);
-
-            console.log(gameboard.boardArray);
-    
-            // fire another events
-            // addTurn, checkEnd, putMarker, 
-
-
-            gameFlow.turns += 1;
-            gameLogic.checkEnd();
+            // making next turn and rendering result
+            gameFlow.nextTurn(row, column);
+            gameInterface.renderMarker(target,gameFlow.currentMarker);
 
             // disabling square to avoid double click or rewriting marker
-            e.target.removeAttribute('onClick');
+            target.removeAttribute('onClick');
+
+            // highlight current player
+            gameInterface.activePlayer();        
         }
     },
  
-    documentReady() {
+
+    docReady() {
+        const whenDocReady = this;
+        document.addEventListener('DOMContentLoaded', function(e) {
+            gameboard.buildBoard();
+        
+            document.querySelectorAll('.marker').forEach((e) => {
+                e.addEventListener('click', whenDocReady.initialMarkerChoice);
+            });
+        
+            whenDocReady.onClick('.start',gameInterface.showGameBoard);
+            whenDocReady.onClick('#restart',gameFlow.restartGame);
+            whenDocReady.onClick('#end-game',function(){location.reload()});    
+        });
 
     },
 
-    startButtonClick() {
-
-    }
-
-}
-
-
-const render = {
-    marker(target,marker) {
-        target.innerHTML = gameboard.markers[marker];
-
+    onClick(target,handler) {
+        document.querySelector(target).addEventListener('click',handler);
     },
 
+    initialMarkerChoice(e) {
+            e.stopPropagation();
+            const target = e.target;
+            const player = target.getAttribute('data-player');
+            const marker = target.getAttribute('data-marker');
+               
+            gameInterface.chooseMarker(target,player,marker);
+            gameFlow.addPLayer(newPlayer(player,marker));
+            gameInterface.showStartButton();
+        }
 }
 
-
-const interface = {
+const gameInterface = {
 
     init() {
 
     },
 
-    getBoardContainer() {
-        return document.querySelector('.gameboard-container');
-    },
-
-    buildBoard() {
-        const boardContainer = this.getBoardContainer();
-        gameboard.boardArray.forEach((e,row) => {
-            e.forEach((e,column) => {
-                let boardSquare = document.createElement('span');
-                boardSquare.classList.add('marker-game');
-                boardSquare.setAttribute('data-row',`${row}`);
-                boardSquare.setAttribute('data-column',`${column}`);
-                boardSquare.setAttribute('onClick','events.squareClick(event)');
-                boardContainer.appendChild(boardSquare);
-            })
-        });
-    },
-
     toggleClass(target, className) {
         document.querySelector(target).classList.toggle(className);
-    }
+    },
 
-}
-
-// DELETE EVENT LISTENERS !!!
-
-function chooseMarker(e) {
-    e.stopPropagation();
-    const target = e.target;
-    const player = target.getAttribute('data-player');
-    const anotherPlayer = player == 1 ? 2 : 1;
-    const marker = target.getAttribute('data-marker');
+    showGameBoard() {
+        // toggle classes
+        [
+            {target: '.new-game', class: 'hide'},
+            {target: '.gameboard-container', class: 'hide'},
+            {target: '#restart', class: 'hide'},
+            {target: '#end-game', class: 'hide'},
+            {target: '.score-container', class: 'hide'},
+        ].forEach(toggle => gameInterface.toggleClass(toggle.target,toggle.class));
+    
+        // clear event listener
+        document.querySelector('.start').removeEventListener('click',this.showGameBoard);
+    
+        // small markers near score
+        document.querySelectorAll('.score-marker').forEach((el) => {
+            const marker = gameFlow.players[el.getAttribute('data-player')-1].marker;
+            el.innerHTML = gameboard.markers[marker];
+        })
+    
+        gameInterface.activePlayer();
+    },
     
 
-    // select marker, highlight marker in hreen
-    target.classList.add('selected');
-    
+    activePlayer() {
+        document.querySelectorAll('.score-player').forEach((el) => {
+            if (el.getAttribute('data-player') != gameFlow.lastTurn + 1) {
+                el.classList.toggle('selected');
 
-    // disable not chosen marker for player 1
-    document.querySelectorAll(`[data-player="${player}"]`)
-        .forEach((e) => {
-            if (!e.classList.contains('selected')) {
-                e.classList.add('disabled');
+            } else {
+                if (el.classList.contains('selected')) {
+                    el.classList.toggle('selected');
+                }
             }
-            e.removeEventListener('click',chooseMarker);
         });
+    },
+
+    renderMarker(target,marker) {
+        target.innerHTML = gameboard.markers[marker];
+
+    },
+
+    chooseMarker(target,player,marker) {
+        const anotherPlayer = player == 1 ? 2 : 1;
+
+        // select marker, highlight marker in hreen
+        target.classList.add('selected');
         
-    // disable chosen marker for player 2
-    document.querySelectorAll(`[data-player="${anotherPlayer}"]`)
-        .forEach((e) => {
-            if (e.getAttribute('data-marker') == marker) {
-                e.classList.add('disabled');
-                e.removeEventListener('click',chooseMarker);
-            }
-            
-        });
+        // disable not chosen marker for player 1
+        document.querySelectorAll(`[data-player]`)
+            .forEach((e) => {
+                const playerAttribute = e.getAttribute('data-player');
+                if (playerAttribute == player) {
+                    if (!e.classList.contains('selected')) {
+                        e.classList.add('disabled');
+                    }
+                    e.removeEventListener('click',this.chooseMarker);
+                } else if (playerAttribute == anotherPlayer) {
+                    if (e.getAttribute('data-marker') == marker) {
+                        e.classList.add('disabled');
+                        e.removeEventListener('click',this.chooseMarker);
+                    }   
+                }
+            });
+    },
 
-    gameFlow.addPLayer(newPlayer(player,marker));
+    showStartButton() {
+        // if have 2 players, show button new game 
+        if (gameFlow.players.length >= 2) {
+            this.toggleClass('.start','hide');
+            document.querySelectorAll('.marker').forEach((e) => {
+                e.removeEventListener('click', this.chooseMarker);
+            });
+        };
+    },
 
-   
-    // if have 2 players, show button new game 
-    if (gameFlow.players.length >= 2) {
-        interface.toggleClass('.start','hide');
-        document.querySelectorAll('.marker').forEach((e) => {
-            e.removeEventListener('click', chooseMarker);
-        });
-    };
+    showResult(winner) {
+        if  (winner == undefined) {
+            winner = '';
+        } else if (winner != "it's a tie") {
+            winner = `Player ${winner} won`;
+        } 
+        document.querySelector('.result').innerHTML = winner;
+        this.toggleClass('.score-container','hide');
+        this.toggleClass('.result','hide');
+    }
 }
 
-function showGameBoard() {
-    interface.toggleClass('.new-game','hide');
-    interface.toggleClass('.gameboard-container','hide');
-    document.querySelector('.start').removeEventListener('click',showGameBoard);
-}
-
-
-document.addEventListener('DOMContentLoaded', function(e) {
-    interface.buildBoard();
-
-    document.querySelectorAll('.marker').forEach((e) => {
-        e.addEventListener('click', chooseMarker);
-    });
-
-    document.querySelector('.start').addEventListener('click',showGameBoard);
-});
-
-
+gameFlow.newGame();
