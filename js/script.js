@@ -29,17 +29,20 @@ const gameboard = (function() {
             [0,0,0],
             [0,0,0],
             [0,0,0]
+            // ['x','o','x'],
+            // ['o','x','o'],
+            // ['o','x','o']
         ],
 
         clearBoard() {
             this.boardArray.forEach((e) => {
-                e.forEach((_,index) => e[index] = 0);
+                e.forEach((_,index) => e[index] = _);
             });
         },
     
         markers: {
-            1: 'X',
-            2: 'O'
+            1: 'x',
+            2: 'o'
         },
 
         getBoardContainer() {
@@ -65,26 +68,177 @@ const gameboard = (function() {
 
 
 
+const AI = (function() {
+    return {
+        evaluate(inputBoard) {
+            const playerAI = gameFlow.players.find(el => el.mode == 'ai');
+            const opponent = gameFlow.players.find(el => el.mode != 'ai');
+
+            const aiMarker = gameboard.markers[playerAI.marker];
+            const opponentMarker = gameboard.markers[opponent.marker];
+
+            const winner = gameLogic.endGame(inputBoard);
+
+            if (winner == aiMarker) {
+                return 10;
+            } else if (winner == opponentMarker) {
+                return -10;
+            } else if (winner == 'tie') {
+                return 0;
+            } else {
+                return false;
+            }
+        },
+
+        miniMax(inputBoard,depth,isMax) {
+            const score = this.evaluate(inputBoard);
+
+            const playerAI = gameFlow.players.find(el => el.mode == 'ai');
+            const opponent = gameFlow.players.find(el => el.mode != 'ai');
+
+            const aiMarker = playerAI.marker;
+            const opponentMarker = opponent.marker;
+
+            if (score !== false) {
+                return score;
+            } else {
+                if (isMax) {
+                    let best = -Infinity;
+
+                    for (let row = 0; row < 3; row++) {
+                        for(let col = 0; col < 3; col++) {
+                            if (inputBoard[row][col] == 0) {
+
+                                inputBoard[row][col] = aiMarker;
+
+                                best = Math.max(best,this.miniMax(gameboard.boardArray,depth+1,!isMax));
+
+                                // console.log(gameboard.boardArray);
+
+                                inputBoard[row][col] = 0;
+                            } 
+                        }
+                    }
+
+                    return best;
+
+                } else if (!isMax) {
+
+                    let best = Infinity;
+
+                    for (let row = 0; row < 3; row++) {
+                        for(let col = 0; col < 3; col++) {
+                            if (inputBoard[row][col] == 0) {
+
+                                inputBoard[row][col] = opponentMarker;
+
+                                best = Math.min(best,this.miniMax(inputBoard,depth+1,!isMax));
+
+                                inputBoard[row][col] = 0;
+                            } 
+                        }
+                    }
+
+                    return best;
+
+                }
+            }
+        },
+
+        findBestMove(inputBoard) {
+            let bestVal = -Infinity;
+            let bestMove = [-1,-1];
+
+            const playerAI = gameFlow.players.find(el => el.mode == 'ai');
+            const aiMarker = playerAI.marker;
+
+            for (let row = 0; row < 3; row++) {
+                for(let col = 0; col < 3; col++) {
+                    if (inputBoard[row][col] == 0) {
+                        inputBoard[row][col] = aiMarker;
+
+                        let moveVal = this.miniMax(inputBoard,0,false);
+
+                        inputBoard[row][col] = 0;
+
+                        if (moveVal > bestVal) {
+                            bestVal = moveVal;
+                            bestMove = [row,col];
+                        }
+                    }
+                }
+            }
+
+            return bestMove;
+
+        },
+
+
+
+
+    }
+})();
+
 
 const gameLogic = (function() {
     return {
-        checkEnd() {
+
+        getLines(inputBoard=gameboard.boardArray) {
+            // can replace with fixed solution for diagonals and simple loop for columns like 
             // prepare diagonals and verticals
-            const board = gameboard.boardArray;
+            const board = inputBoard;
             const diagonalOne = board[0].map((_, index) => board[index][index]);
-            const diagonalTwo = board[0].map((_, index) => board[index][Math.abs(2-index)]);
+            const diagonalTwo = board[0].map((_, index) => board[index][Math.abs(2 - index)]);
             const transposedBoard = tranposeArray(board);
 
-            const that = this;
-    
             // transposing array to check vierticals in simple loop
             function tranposeArray(array) {
-                const transposedArray = array[0].map((_,colIndex) => {
+                const transposedArray = array[0].map((_, colIndex) => {
                     return array.map(row => row[colIndex]);
                 });
                 return transposedArray;
             }
-          
+
+            return board.concat([diagonalOne], [diagonalTwo], transposedBoard);
+        },
+
+        possibleChoices(inputBoard) {
+            const choices = [];
+            inputBoard.forEach((_,row) => {
+                _.forEach((el,column) => {
+                    if (el == 0) {
+                        choices.push({row,column});
+                    }
+                });
+            });
+            if (choices.length == 0) {
+                return 0;
+            } else {
+                return choices;
+            }
+        },
+
+        endGame(inputBoard=gameboard.boardArray) {
+            const lines = gameLogic.getLines(inputBoard);
+            let marker = false;
+            if (this.possibleChoices(inputBoard) == 0) {
+                marker = 'tie';
+            };
+
+            lines.forEach(
+                (line) => {
+                    if (line.every(el => el == '1') || line.every(el => el == '2')) {
+                        marker = gameboard.markers[line[0]];
+                    }
+                }
+            )
+            
+            return marker;
+        },
+
+
+        checkEnd() {
+                  
             function checker(lines) {
                 lines.forEach(line => {
                     if (line.every(el => el == 1) || line.every(el => el == 2)) {
@@ -99,6 +253,7 @@ const gameLogic = (function() {
             }
     
             // in case of tie, we count players turns
+            // check free squares
             if (gameFlow.turns >= 9) {
                 gameFlow.gameActive = false;
                 gameInterface.activePlayer();
@@ -106,7 +261,7 @@ const gameLogic = (function() {
             }
     
             // checking rows & diagonals
-            checker.call(this,board.concat([diagonalOne],[diagonalTwo],transposedBoard));  
+            checker.call(this,this.getLines());  
         },
     
         chooseWinner(marker) {
@@ -162,7 +317,10 @@ const gameFlow = (function() {
             this.currentMarker = this.players[turn].marker;
             this.putMarker(this.currentMarker, row, column);
             this.turns += 1;
-            gameLogic.checkEnd();
+            /// !!!!!!!
+            if (gameLogic.endGame()) {
+                gameInterface.renderResult();
+            }
         },
 
         putMarker(marker, row, column) {
@@ -319,6 +477,10 @@ const gameInterface = {
 
     },
 
+    renderResult() {
+        //
+    },
+
     toggleClass(target, className) {
         document.querySelector(target).classList.toggle(className);
     },
@@ -431,9 +593,17 @@ function pseudoAI(init) {
         });
         
 
-        const choice = Math.floor(Math.random() * choices.length);
-        const row = choices[choice].row;
-        const column = choices[choice].column;
+        // const choice = Math.floor(Math.random() * choices.length);
+        // const row = choices[choice].row;
+        // const column = choices[choice].column;
+
+        const nextMove = AI.findBestMove(gameboard.boardArray);
+        const row = nextMove[0];
+        const column = nextMove[1];
+
+
+
+
         const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
 
         // making next turn and rendering result

@@ -46,6 +46,7 @@ main {
     justify-content: center;
     color: #fff;
     font-size: 5rem;
+    text-transform: uppercase;
 }
 
 .marker,
