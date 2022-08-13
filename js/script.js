@@ -7,6 +7,7 @@
 // 5. automatic choice for second player
 // 6. animate lines
 
+// add animation before AI tuen after game restart
 
 // ideas to refactor code
 /*
@@ -36,7 +37,7 @@ const gameboard = (function() {
 
         clearBoard() {
             this.boardArray.forEach((e) => {
-                e.forEach((_,index) => e[index] = _);
+                e.forEach((_,index) => e[index] = 0);
             });
         },
     
@@ -67,15 +68,14 @@ const gameboard = (function() {
 })();
 
 
-
 const AI = (function() {
     return {
         evaluate(inputBoard) {
             const playerAI = gameFlow.players.find(el => el.mode == 'ai');
             const opponent = gameFlow.players.find(el => el.mode != 'ai');
 
-            const aiMarker = gameboard.markers[playerAI.marker];
-            const opponentMarker = gameboard.markers[opponent.marker];
+            const aiMarker = playerAI.marker;
+            const opponentMarker = opponent.marker;
 
             const winner = gameLogic.endGame(inputBoard);
 
@@ -111,7 +111,7 @@ const AI = (function() {
 
                                 inputBoard[row][col] = aiMarker;
 
-                                best = Math.max(best,this.miniMax(gameboard.boardArray,depth+1,!isMax));
+                                best = Math.max(best,this.miniMax(gameboard.boardArray,depth+1,!isMax)) - depth;
 
                                 // console.log(gameboard.boardArray);
 
@@ -132,7 +132,7 @@ const AI = (function() {
 
                                 inputBoard[row][col] = opponentMarker;
 
-                                best = Math.min(best,this.miniMax(inputBoard,depth+1,!isMax));
+                                best = Math.min(best,this.miniMax(inputBoard,depth+1,!isMax)) + depth;
 
                                 inputBoard[row][col] = 0;
                             } 
@@ -171,11 +171,7 @@ const AI = (function() {
 
             return bestMove;
 
-        },
-
-
-
-
+        }
     }
 })();
 
@@ -228,44 +224,17 @@ const gameLogic = (function() {
             lines.forEach(
                 (line) => {
                     if (line.every(el => el == '1') || line.every(el => el == '2')) {
-                        marker = gameboard.markers[line[0]];
+                        marker = line[0];
                     }
                 }
             )
             
             return marker;
         },
-
-
-        checkEnd() {
-                  
-            function checker(lines) {
-                lines.forEach(line => {
-                    if (line.every(el => el == 1) || line.every(el => el == 2)) {
-                        const winner = this.chooseWinner(line[0]);
-                        console.log('player ' + (winner) + ' is winner');
-                        gameFlow.gameActive = false;
-                        gameInterface.showResult(winner);
-                        const scoreResult = `${gameFlow.players[0].score}:${gameFlow.players[1].score}`;
-                        document.querySelector('.score').innerHTML = scoreResult;
-                    }
-                })
-            }
-    
-            // in case of tie, we count players turns
-            // check free squares
-            if (gameFlow.turns >= 9) {
-                gameFlow.gameActive = false;
-                gameInterface.activePlayer();
-                gameInterface.showResult("it's a tie");
-            }
-    
-            // checking rows & diagonals
-            checker.call(this,this.getLines());  
-        },
     
         chooseWinner(marker) {
-            gameInterface.activePlayer();
+            // ?????
+            // gameInterface.activePlayer();
             const winner = gameFlow.players.filter((e) => e.marker == marker)[0];
             const name = winner.name;
             winner.score += 1;
@@ -319,7 +288,23 @@ const gameFlow = (function() {
             this.turns += 1;
             /// !!!!!!!
             if (gameLogic.endGame()) {
+                const marker = gameLogic.endGame();
+                let winner;
+                if (marker == 'tie') {
+                    gameInterface.showResult("it's a tie");
+                } else {
+                    winner = gameLogic.chooseWinner(gameLogic.endGame());
+                    console.log('player ' + (winner) + ' is winner');
+                    gameInterface.showResult(winner);
+                }
+                
+                gameFlow.gameActive = false;
+                const scoreResult = `${gameFlow.players[0].score}:${gameFlow.players[1].score}`;
+                document.querySelector('.score').innerHTML = scoreResult;
+                
+
                 gameInterface.renderResult();
+
             }
         },
 
@@ -329,6 +314,8 @@ const gameFlow = (function() {
 
         lastTurn: 1,
 
+        whoStarts: 0,
+
         currentMarker: 0,
 
         turns: 0,
@@ -336,15 +323,33 @@ const gameFlow = (function() {
         gameActive: true,
 
         restartGame() {
+            gameFlow.whoStarts = gameFlow.whoStarts == 0 ? 1 : 0;
+            gameFlow.lastTurn = gameFlow.whoStarts == 0 ? 1 : 0;
+
             gameboard.clearBoard();
             gameboard.buildBoard();
             gameFlow.turns = 0;
             gameFlow.gameActive = true;
-            gameInterface.activePlayer();
+            // gameInterface.activePlayer();
+            // gameInterface.activePlayer();
             gameInterface.showResult();
 
+            //
+            
+            //
 
-            pseudoAI();
+            const anotherPlayerIndex = gameFlow.lastTurn;
+            const playerIndex = anotherPlayerIndex == 0 ? 1 : 0;
+
+            if (gameFlow.players[anotherPlayerIndex].mode != 'ai'
+                && gameFlow.players[playerIndex].mode == 'ai'
+            ) {
+                gameInterface.activePlayer();
+                pseudoAI();
+                
+            }
+
+            // pseudoAI();
 
         }
         
@@ -370,45 +375,7 @@ const events = {
             // highlight current player
             gameInterface.activePlayer(); 
 
-
             pseudoAI();
-
-            // const anotherPlayer = gameFlow.players[gameFlow.lastTurn].name == 1 ? 1 : 0;
-
-            // const playerMode = gameFlow.players[anotherPlayer].mode;
-
-            // if (playerMode == 'ai' && gameFlow.gameActive) {
-            //     //  ADD PLAYER WHO IS AI, because in second game start as player
-            //     const choices = [];
-            //     gameboard.boardArray.forEach((_,row) => {
-            //         _.forEach((el,column) => {
-            //             if (el == 0) {
-            //                 choices.push({row,column});
-            //             }
-            //         });
-            //     })
-
-            //     const choice = Math.floor(Math.random() * choices.length);
-            //     const row = choices[choice].row;
-            //     const column = choices[choice].column;
-            //     const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
-
-            //     // making next turn and rendering result
-            //     gameFlow.nextTurn(row, column);
-
-            //     gameInterface.renderMarker(target,gameFlow.currentMarker);
-
-            //     // disabling square to avoid double click or rewriting marker
-            //     target.removeAttribute('onClick');
-
-            //     // highlight current player
-            //     gameInterface.activePlayer(); 
-
-
-            //     // in AI mode have problems with score and active user
-            //     // i have to make while loop, waiting for input click or when both are ai, to make the rhytm 
-
-            // }
 
         }
     },
@@ -444,8 +411,6 @@ const events = {
                     gameFlow.gameMode = mode;
                 });
             });
-
-            // end of choice
 
         });
 
@@ -508,7 +473,7 @@ const gameInterface = {
     
         gameInterface.activePlayer();
 
-        pseudoAI('init');
+        // pseudoAI('init');
     },
     
 
@@ -558,7 +523,7 @@ const gameInterface = {
         if (gameFlow.players.length >= 2) {
             this.toggleClass('.start','hide');
             document.querySelectorAll('.marker').forEach((e) => {
-                e.removeEventListener('click', this.chooseMarker);
+                e.removeEventListener('click', events.initialMarkerChoice);
             });
         };
     },
@@ -569,9 +534,22 @@ const gameInterface = {
         } else if (winner != "it's a tie") {
             winner = `Player ${winner} won`;
         } 
+
         document.querySelector('.result').innerHTML = winner;
-        this.toggleClass('.score-container','hide');
-        this.toggleClass('.result','hide');
+
+        if (winner != '') {
+            this.toggleClass('.score-container','hide');
+            this.toggleClass('.result','hide');
+        } else {
+            if (document.querySelector('.score-container').classList.contains('hide')) {
+                    this.toggleClass('.score-container','hide');
+            }
+            
+            if (!document.querySelector('.result')
+                .classList.contains('hide')) {
+                    this.toggleClass('.result','hide');
+            }
+        }
     }
 }
 
@@ -591,18 +569,10 @@ function pseudoAI(init) {
                 }
             });
         });
-        
-
-        // const choice = Math.floor(Math.random() * choices.length);
-        // const row = choices[choice].row;
-        // const column = choices[choice].column;
 
         const nextMove = AI.findBestMove(gameboard.boardArray);
         const row = nextMove[0];
         const column = nextMove[1];
-
-
-
 
         const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
 
