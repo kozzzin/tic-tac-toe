@@ -36,23 +36,28 @@
         </header>
         <main>
             <div class="new-game">
-                <div class="player-one">
-                    <div class="mode-choice"><a a href="#" class="game-mode selected" data-player="1" data-mode="player">Player</a></div>
+                <div class="player-container" data-player="1">
+                    <div class="mode-choice"><span href="#" class="game-mode selected" data-player="1" data-selected="true" data-mode="player">Choose side</span></div>
                     <div class="player-choice">
-                        <span data-player="1" data-marker="1" class="marker">X</span>
-                        <span data-player="1" data-marker="2" class="marker">O</span>
+                        <span data-player="1" data-selected="false" data-marker="1" class="marker">X</span>
+                        <span data-player="1"  data-selected="false" data-marker="2" class="marker">O</span>
                     </div>
                 </div>
-                <div class="vs">
+                <!-- <div class="vs">
                     <span>VS.</span>
-                </div>
-                <div class="player-two">
-                    <div class="mode-choice"><a a href="#" class="game-mode" data-player="2" data-mode="player">Player</a> | <a href="#" class="game-mode selected" data-player="2" data-mode="ai">Ai</a></div>
+                </div> -->
+
+                <div class="mode-choice opponent"><span>Opponent:</span><br><a href="#" class="game-mode" data-player="2" data-mode="player" data-selected="false">Player</a> | <a href="#" class="game-mode selected" data-selected="true" data-player="2" data-mode="ai">Ai</a></div>
+
+
+
+                <!-- <div class="player-container" data-player="2">
+                    <div class="mode-choice"><a href="#" class="game-mode" data-player="2" data-mode="player" data-selected="false">Player</a> | <a href="#" class="game-mode selected" data-selected="true" data-player="2" data-mode="ai">Ai</a></div>
                     <div class="player-choice">
-                        <span data-player="2" data-marker="1" class="marker">X</span>
-                        <span data-player="2" data-marker="2" class="marker">O</span>
+                        <span data-player="2" data-selected="false" data-marker="1" class="marker">X</span>
+                        <span data-player="2" data-selected="false" data-marker="2" class="marker">O</span>
                     </div>
-                </div>
+                </div> -->
                 <button class="start hide">Start game</button>
             </div>
             <div class="gameboard-container hide">

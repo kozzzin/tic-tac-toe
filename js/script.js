@@ -1,13 +1,7 @@
-// player or ai
-// if AI starts the game, not after refresh
-// 2. AI --
 // refactor the code
-// 3. ?? add animations
+// 3. ?? add animations // 6. animate lines
 // 4. ?? change name
-// 5. automatic choice for second player
-// 6. animate lines
-
-// add animation before AI tuen after game restart
+// 
 
 // ideas to refactor code
 /*
@@ -30,9 +24,6 @@ const gameboard = (function() {
             [0,0,0],
             [0,0,0],
             [0,0,0]
-            // ['x','o','x'],
-            // ['o','x','o'],
-            // ['o','x','o']
         ],
 
         clearBoard() {
@@ -51,7 +42,7 @@ const gameboard = (function() {
         },
     
         buildBoard() {
-            const boardContainer = this.getBoardContainer();
+            const boardContainer = document.querySelector('.gameboard-container');
             boardContainer.innerHTML = '';
             gameboard.boardArray.forEach((e,row) => {
                 e.forEach((e,column) => {
@@ -171,6 +162,50 @@ const AI = (function() {
 
             return bestMove;
 
+        },
+
+        activate(init=false) {
+            const anotherPlayer = gameFlow.players[gameFlow.lastTurn].name == 1 ? 1 : 0;
+        
+            const playerMode = gameFlow.players[anotherPlayer].mode;
+        
+            let row, column, nextMove;
+            
+            if (playerMode == 'ai' && gameFlow.gameActive) {
+                const choices = [];
+                gameboard.boardArray.forEach((_,row) => {
+                    _.forEach((el,column) => {
+                        if (el == 0) {
+                            choices.push({row,column});
+                        }
+                    });
+                });
+        
+                if (init==true) {
+                    const randomChoice = Math.floor(Math.random() * choices.length);
+                    nextMove = choices[randomChoice];
+                    row = nextMove.row;
+                    column = nextMove.column;
+                } else {
+                    nextMove = AI.findBestMove(gameboard.boardArray);
+                    row = nextMove[0];
+                    column = nextMove[1];
+                }
+        
+        
+                const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
+        
+                // making next turn and rendering result
+                gameFlow.nextTurn(row, column);
+        
+                gameInterface.renderMarker(target,gameFlow.currentMarker);
+        
+                // disabling square to avoid double click or rewriting marker
+                target.removeAttribute('onClick');
+        
+                // highlight current player
+                gameInterface.activePlayer();
+            }
         }
     }
 })();
@@ -178,7 +213,6 @@ const AI = (function() {
 
 const gameLogic = (function() {
     return {
-
         getLines(inputBoard=gameboard.boardArray) {
             // can replace with fixed solution for diagonals and simple loop for columns like 
             // prepare diagonals and verticals
@@ -233,8 +267,6 @@ const gameLogic = (function() {
         },
     
         chooseWinner(marker) {
-            // ?????
-            // gameInterface.activePlayer();
             const winner = gameFlow.players.filter((e) => e.marker == marker)[0];
             const name = winner.name;
             winner.score += 1;
@@ -247,13 +279,14 @@ const gameLogic = (function() {
 
 const gameFlow = (function() {
     return {
-        /*
-        -- render interface
-        -- choose play vs player or vs AI
-        -- choose marker
-        -- who goes first
-        -- show new button: continue or new game
-        */
+        players: [],
+
+        // gameMode: 'player',
+        lastTurn: 1,
+        whoStarts: 0,
+        currentMarker: 0,
+        turns: 0,
+        gameActive: true,
 
         newGame() {
             events.docReady();
@@ -267,10 +300,6 @@ const gameFlow = (function() {
                 score:0
             }
         },
-
-        players: [],
-
-        gameMode: 'player',
 
         addPLayer(player) {
             this.players.push(player);
@@ -312,19 +341,10 @@ const gameFlow = (function() {
             gameboard.boardArray[row][column] = marker;
         },
 
-        lastTurn: 1,
-
-        whoStarts: 0,
-
-        currentMarker: 0,
-
-        turns: 0,
-
-        gameActive: true,
-
         restartGame() {
             gameFlow.whoStarts = gameFlow.whoStarts == 0 ? 1 : 0;
-            gameFlow.lastTurn = gameFlow.whoStarts == 0 ? 1 : 0;
+            // gameInterface.activePlayer();
+            gameFlow.lastTurn = gameFlow.whoStarts != gameFlow.lastTurn ? gameFlow.lastTurn : gameFlow.turn(gameFlow.lastTurn);
 
             gameboard.clearBoard();
             gameboard.buildBoard();
@@ -338,18 +358,19 @@ const gameFlow = (function() {
             
             //
 
-            const anotherPlayerIndex = gameFlow.lastTurn;
-            const playerIndex = anotherPlayerIndex == 0 ? 1 : 0;
+            gameInterface.activePlayer();
 
-            if (gameFlow.players[anotherPlayerIndex].mode != 'ai'
+            const previousPlayerIndex = gameFlow.lastTurn;
+            const playerIndex = previousPlayerIndex == 0 ? 1 : 0;
+
+            if (gameFlow.players[previousPlayerIndex].mode != 'ai'
                 && gameFlow.players[playerIndex].mode == 'ai'
             ) {
-                gameInterface.activePlayer();
-                pseudoAI();
                 
-            }
-
-            // pseudoAI();
+                AI.activate(true);
+                
+            } 
+            // AI.activate();
 
         }
         
@@ -375,24 +396,23 @@ const events = {
             // highlight current player
             gameInterface.activePlayer(); 
 
-            pseudoAI();
+            AI.activate();
 
         }
     },
  
-
     docReady() {
-        const whenDocReady = this;
+        const event = this;
         document.addEventListener('DOMContentLoaded', function(e) {
             gameboard.buildBoard();
         
             document.querySelectorAll('.marker').forEach((e) => {
-                e.addEventListener('click', whenDocReady.initialMarkerChoice);
+                e.addEventListener('click', event.initialMarkerChoice);
             });
         
-            whenDocReady.onClick('.start',gameInterface.showGameBoard);
-            whenDocReady.onClick('#restart',gameFlow.restartGame);
-            whenDocReady.onClick('#end-game',function(){location.reload()});  
+            event.onClick('.start',event.startClicked);
+            event.onClick('#restart',gameFlow.restartGame);
+            event.onClick('#end-game',function(){location.reload()}); 
             
 
             // choose game mode
@@ -425,15 +445,36 @@ const events = {
             const target = e.target;
             const player = target.getAttribute('data-player');
             const marker = target.getAttribute('data-marker');
-            
-            // HAVE TO ADD DISABLING OF CHOICE
-            const playerMode = document.querySelector(`.game-mode.selected[data-player="${player}"]`);
-            const gameMode = playerMode.getAttribute('data-mode');
                
             gameInterface.chooseMarker(target,player,marker);
-            gameFlow.addPLayer(gameFlow.newPlayer(player,marker,gameMode));
+            
             gameInterface.showStartButton();
-        }
+    },
+
+    startClicked() {
+        const player = document.querySelector('.player-container');
+        let playerName = player.getAttribute('data-player');
+        let mode = player.querySelector('.game-mode.selected').getAttribute('data-mode');
+        let marker = player.querySelector('.player-choice .selected').getAttribute('data-marker');
+
+        gameFlow.addPLayer(gameFlow.newPlayer(playerName,marker,mode));
+
+        console.log(
+            'player name: ', playerName,
+            'mode: ', mode,
+            'marker: ', marker,
+            );
+
+        // add opponent
+        playerName = '2';
+        mode = document.querySelector('.mode-choice.opponent .selected').getAttribute('data-mode');
+        marker = marker == '2' ? '1' : '2';
+
+        gameFlow.addPLayer(gameFlow.newPlayer(playerName,marker,mode));
+
+
+        gameInterface.showGameBoard();
+    }
 }
 
 const gameInterface = {
@@ -450,6 +491,8 @@ const gameInterface = {
         document.querySelector(target).classList.toggle(className);
     },
 
+
+
     showGameBoard() {
         // toggle classes
         [
@@ -463,7 +506,6 @@ const gameInterface = {
         // clear event listener
         document.querySelector('.start').removeEventListener('click',this.showGameBoard);
     
-
         // small markers near score
         document.querySelectorAll('.score-marker').forEach((el) => {
             const player = gameFlow.players.find(e => e.name === el.getAttribute('data-player'));
@@ -472,20 +514,14 @@ const gameInterface = {
         })
     
         gameInterface.activePlayer();
-
-        // pseudoAI('init');
     },
     
 
     activePlayer() {
         document.querySelectorAll('.score-player').forEach((el) => {
+            el.classList.remove('selected');
             if (el.getAttribute('data-player') != gameFlow.players[gameFlow.lastTurn].name) {
-                el.classList.toggle('selected');
-
-            } else {
-                if (el.classList.contains('selected')) {
-                    el.classList.toggle('selected');
-                }
+                el.classList.add('selected');
             }
         });
     },
@@ -494,6 +530,7 @@ const gameInterface = {
         target.innerHTML = gameboard.markers[marker];
     },
 
+
     chooseMarker(target,player,marker) {
         const anotherPlayer = player == 1 ? 2 : 1;
 
@@ -501,31 +538,25 @@ const gameInterface = {
         target.classList.add('selected');
         
         // disable not chosen marker for player 1
-        document.querySelectorAll(`[data-player]`)
+        document.querySelectorAll(`.marker`)
             .forEach((e) => {
-                const playerAttribute = e.getAttribute('data-player');
-                if (playerAttribute == player) {
                     if (!e.classList.contains('selected')) {
                         e.classList.add('disabled');
                     }
                     e.removeEventListener('click',events.initialMarkerChoice);
-                } else if (playerAttribute == anotherPlayer) {
-                    if (e.getAttribute('data-marker') == marker) {
-                        e.classList.add('disabled');
-                        e.removeEventListener('click',events.initialMarkerChoice);
-                    }   
-                }
             });
     },
 
     showStartButton() {
-        // if have 2 players, show button new game 
-        if (gameFlow.players.length >= 2) {
-            this.toggleClass('.start','hide');
-            document.querySelectorAll('.marker').forEach((e) => {
-                e.removeEventListener('click', events.initialMarkerChoice);
-            });
-        };
+        const markers = document.querySelectorAll('.marker');
+        markers.forEach((marker) => {
+            if (marker.classList.contains('selected')) {
+                this.toggleClass('.start','hide');
+                document.querySelectorAll('.marker').forEach((e) => {
+                    e.removeEventListener('click', events.initialMarkerChoice);
+                });
+            }
+        });
     },
 
     showResult(winner) {
@@ -554,37 +585,3 @@ const gameInterface = {
 }
 
 gameFlow.newGame();
-
-function pseudoAI(init) {
-    const anotherPlayer = gameFlow.players[gameFlow.lastTurn].name == 1 ? 1 : 0;
-
-    const playerMode = gameFlow.players[anotherPlayer].mode;
-    
-    if (playerMode == 'ai' && gameFlow.gameActive) {
-        const choices = [];
-        gameboard.boardArray.forEach((_,row) => {
-            _.forEach((el,column) => {
-                if (el == 0) {
-                    choices.push({row,column});
-                }
-            });
-        });
-
-        const nextMove = AI.findBestMove(gameboard.boardArray);
-        const row = nextMove[0];
-        const column = nextMove[1];
-
-        const target = document.querySelector(`[data-row="${row}"][data-column="${column}"]`);
-
-        // making next turn and rendering result
-        gameFlow.nextTurn(row, column);
-
-        gameInterface.renderMarker(target,gameFlow.currentMarker);
-
-        // disabling square to avoid double click or rewriting marker
-        target.removeAttribute('onClick');
-
-        // highlight current player
-        gameInterface.activePlayer();
-    }
-}
