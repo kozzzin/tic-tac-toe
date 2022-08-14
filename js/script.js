@@ -20,10 +20,6 @@ const gameboard = (function() {
             2: 'o'
         },
 
-        getBoardContainer() {
-            return document.querySelector('.gameboard-container');
-        },
-    
         buildBoard() {
             const boardContainer = document.querySelector('.gameboard-container');
             boardContainer.innerHTML = '';
@@ -44,12 +40,24 @@ const gameboard = (function() {
 
 const AI = (function() {
     return {
-        evaluate(inputBoard,depth) {
+
+        findAiPlayer() {
             const playerAI = gameFlow.players.find(el => el.mode == 'ai');
             const opponent = gameFlow.players.find(el => el.mode != 'ai');
-
             const aiMarker = playerAI.marker;
             const opponentMarker = opponent.marker;
+
+            return {
+                playerAI,
+                opponent,
+                aiMarker,
+                opponentMarker
+            }
+
+        },
+
+        evaluate(inputBoard,depth) {
+            const {playerAI, opponent, aiMarker, opponentMarker} = this.findAiPlayer();
 
             const winner = gameLogic.endGame(inputBoard);
 
@@ -67,11 +75,7 @@ const AI = (function() {
         miniMax(inputBoard,depth,isMax) {
             const score = this.evaluate(inputBoard,depth);
 
-            const playerAI = gameFlow.players.find(el => el.mode == 'ai');
-            const opponent = gameFlow.players.find(el => el.mode != 'ai');
-
-            const aiMarker = playerAI.marker;
-            const opponentMarker = opponent.marker;
+            const {playerAI, opponent, aiMarker, opponentMarker} = this.findAiPlayer();
 
             if (score !== false) {
                 return score;
@@ -86,8 +90,6 @@ const AI = (function() {
                                 inputBoard[row][col] = aiMarker;
 
                                 best = Math.max(best,this.miniMax(gameboard.boardArray,depth+1,!isMax));
-
-                                // console.log(gameboard.boardArray);
 
                                 inputBoard[row][col] = 0;
                             } 
@@ -298,7 +300,7 @@ const gameFlow = (function() {
             this.currentMarker = this.players[turn].marker;
             this.saveMarker(this.currentMarker, row, column);
             this.turns += 1;
-            /// !!!!!!!
+
             if (gameLogic.endGame()) {
                 const marker = gameLogic.endGame();
                 let winner;
@@ -306,17 +308,12 @@ const gameFlow = (function() {
                     gameInterface.showResult("it's a tie");
                 } else {
                     winner = gameLogic.chooseWinner(gameLogic.endGame());
-                    console.log('player ' + (winner) + ' is winner');
                     gameInterface.showResult(winner);
                 }
                 
                 gameFlow.gameActive = false;
                 const scoreResult = `${gameFlow.players[0].score}:${gameFlow.players[1].score}`;
                 document.querySelector('.score').innerHTML = scoreResult;
-                
-
-                gameInterface.renderResult();
-
             }
         },
 
@@ -377,7 +374,7 @@ const events = {
     docReady() {
         const event = this;
         document.addEventListener('DOMContentLoaded', function(e) {
-            gameboard.buildBoard();
+
         
             document.querySelectorAll('.marker').forEach((e) => {
                 e.addEventListener('click', event.initialMarkerChoice);
@@ -389,21 +386,10 @@ const events = {
             
 
             // choose game mode
-            const modesNode = document.querySelectorAll('.game-mode');
-
-            modesNode.forEach((el) => {
-                el.addEventListener('click', function(e) {
-                    const mode = el.getAttribute('data-mode');
-                    const player = e.target.getAttribute('data-player');
-                    modesNode.forEach((el) => {
-                        if (el.getAttribute('data-player') == player) {
-                            el.classList.toggle('selected');
-                        }
-                        
-                    });
-                    gameFlow.gameMode = mode;
-                });
+            document.querySelectorAll('.game-mode').forEach((e) => {
+                e.addEventListener('click', event.chooseGameMode);
             });
+            
         });
     },
 
@@ -422,19 +408,30 @@ const events = {
             gameInterface.showStartButton();
     },
 
+    chooseGameMode(el) {
+
+            el.addEventListener('click', function(e) {
+                const mode = el.getAttribute('data-mode');
+                const player = e.target.getAttribute('data-player');
+                modesNode.forEach((el) => {
+                    if (el.getAttribute('data-player') == player) {
+                        el.classList.toggle('selected');
+                    }
+                    
+                });
+                gameFlow.gameMode = mode;
+            });
+    },
+
     startClicked() {
+        gameboard.buildBoard();
+
         const player = document.querySelector('.player-container');
         let playerName = player.getAttribute('data-player');
         let mode = player.querySelector('.game-mode.selected').getAttribute('data-mode');
         let marker = player.querySelector('.player-choice .selected').getAttribute('data-marker');
 
         gameFlow.addPLayer(gameFlow.newPlayer(playerName,marker,mode));
-
-        console.log(
-            'player name: ', playerName,
-            'mode: ', mode,
-            'marker: ', marker,
-            );
 
         // add opponent
         playerName = '2';
@@ -448,21 +445,11 @@ const events = {
 }
 
 const gameInterface = {
-
-    init() {
-
-    },
-
-    renderResult() {
-        //
-    },
-
     toggleClass(target, className) {
         document.querySelector(target).classList.toggle(className);
     },
 
     showGameBoard() {
-        // toggle classes
         [
             {target: '.new-game', class: 'hide'},
             {target: '.gameboard-container', class: 'hide'},
@@ -551,14 +538,3 @@ const gameInterface = {
 }
 
 gameFlow.newGame();
-
-
-
-// init.game -> render board, choose active player and so on
-// -- build board
-// -- highlight current player
-// restart game -> same shit
-// -- clear array
-// -- build board
-// -- highlight current player
-// x
