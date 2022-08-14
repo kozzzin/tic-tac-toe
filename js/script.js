@@ -1,20 +1,3 @@
-// refactor the code
-// 3. ?? add animations // 6. animate lines
-// 4. ?? change name
-// 
-
-// ideas to refactor code
-/*
-basic logic works without interface,
-you could choose your marker,
-decide who's turn is first,
-how the computer responds and so on
-
-than w have render / visual level, where we render out board from array
-
-and than gameflow object to join 2 layers
-*/
-
 "use strict";
 
 
@@ -61,7 +44,7 @@ const gameboard = (function() {
 
 const AI = (function() {
     return {
-        evaluate(inputBoard) {
+        evaluate(inputBoard,depth) {
             const playerAI = gameFlow.players.find(el => el.mode == 'ai');
             const opponent = gameFlow.players.find(el => el.mode != 'ai');
 
@@ -71,9 +54,9 @@ const AI = (function() {
             const winner = gameLogic.endGame(inputBoard);
 
             if (winner == aiMarker) {
-                return 10;
+                return 10 - depth;
             } else if (winner == opponentMarker) {
-                return -10;
+                return -10 + depth;
             } else if (winner == 'tie') {
                 return 0;
             } else {
@@ -82,7 +65,7 @@ const AI = (function() {
         },
 
         miniMax(inputBoard,depth,isMax) {
-            const score = this.evaluate(inputBoard);
+            const score = this.evaluate(inputBoard,depth);
 
             const playerAI = gameFlow.players.find(el => el.mode == 'ai');
             const opponent = gameFlow.players.find(el => el.mode != 'ai');
@@ -102,7 +85,7 @@ const AI = (function() {
 
                                 inputBoard[row][col] = aiMarker;
 
-                                best = Math.max(best,this.miniMax(gameboard.boardArray,depth+1,!isMax)) - depth;
+                                best = Math.max(best,this.miniMax(gameboard.boardArray,depth+1,!isMax));
 
                                 // console.log(gameboard.boardArray);
 
@@ -123,7 +106,7 @@ const AI = (function() {
 
                                 inputBoard[row][col] = opponentMarker;
 
-                                best = Math.min(best,this.miniMax(inputBoard,depth+1,!isMax)) + depth;
+                                best = Math.min(best,this.miniMax(inputBoard,depth+1,!isMax));
 
                                 inputBoard[row][col] = 0;
                             } 
@@ -313,7 +296,7 @@ const gameFlow = (function() {
         nextTurn(row,column) {
             let turn = this.turn(this.lastTurn);
             this.currentMarker = this.players[turn].marker;
-            this.putMarker(this.currentMarker, row, column);
+            this.saveMarker(this.currentMarker, row, column);
             this.turns += 1;
             /// !!!!!!!
             if (gameLogic.endGame()) {
@@ -337,7 +320,7 @@ const gameFlow = (function() {
             }
         },
 
-        putMarker(marker, row, column) {
+        saveMarker(marker, row, column) {
             gameboard.boardArray[row][column] = marker;
         },
 
@@ -354,10 +337,6 @@ const gameFlow = (function() {
             // gameInterface.activePlayer();
             gameInterface.showResult();
 
-            //
-            
-            //
-
             gameInterface.activePlayer();
 
             const previousPlayerIndex = gameFlow.lastTurn;
@@ -365,15 +344,10 @@ const gameFlow = (function() {
 
             if (gameFlow.players[previousPlayerIndex].mode != 'ai'
                 && gameFlow.players[playerIndex].mode == 'ai'
-            ) {
-                
-                AI.activate(true);
-                
+            ) {      
+                AI.activate(true); 
             } 
-            // AI.activate();
-
         }
-        
     }
 })();
 
@@ -397,7 +371,6 @@ const events = {
             gameInterface.activePlayer(); 
 
             AI.activate();
-
         }
     },
  
@@ -431,9 +404,7 @@ const events = {
                     gameFlow.gameMode = mode;
                 });
             });
-
         });
-
     },
 
     onClick(target,handler) {
@@ -472,7 +443,6 @@ const events = {
 
         gameFlow.addPLayer(gameFlow.newPlayer(playerName,marker,mode));
 
-
         gameInterface.showGameBoard();
     }
 }
@@ -490,8 +460,6 @@ const gameInterface = {
     toggleClass(target, className) {
         document.querySelector(target).classList.toggle(className);
     },
-
-
 
     showGameBoard() {
         // toggle classes
@@ -516,7 +484,6 @@ const gameInterface = {
         gameInterface.activePlayer();
     },
     
-
     activePlayer() {
         document.querySelectorAll('.score-player').forEach((el) => {
             el.classList.remove('selected');
@@ -529,7 +496,6 @@ const gameInterface = {
     renderMarker(target,marker) {
         target.innerHTML = gameboard.markers[marker];
     },
-
 
     chooseMarker(target,player,marker) {
         const anotherPlayer = player == 1 ? 2 : 1;
@@ -585,3 +551,14 @@ const gameInterface = {
 }
 
 gameFlow.newGame();
+
+
+
+// init.game -> render board, choose active player and so on
+// -- build board
+// -- highlight current player
+// restart game -> same shit
+// -- clear array
+// -- build board
+// -- highlight current player
+// x
